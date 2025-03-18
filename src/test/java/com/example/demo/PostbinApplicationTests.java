@@ -8,6 +8,7 @@ class PostbinApplicationTests {
 
 	@Test
 	void contextLoads() {
+		//test
 	}
 
 }

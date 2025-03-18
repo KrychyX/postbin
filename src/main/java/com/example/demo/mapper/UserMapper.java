@@ -12,6 +12,10 @@ import java.util.stream.Collectors;
  */
 public class UserMapper {
 
+    private UserMapper() {
+        throw new UnsupportedOperationException("Utility class");
+    }
+
     /**
      * Преобразует сущность {@link User} в {@link UserDTO}.
      * Включает данные о пользователе, его статьях, подписках и подписчиках.

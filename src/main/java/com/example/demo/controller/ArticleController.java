@@ -5,7 +5,6 @@ import com.example.demo.mapper.ArticleMapper;
 import com.example.demo.model.Article;
 import com.example.demo.service.ArticleService;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -60,7 +59,7 @@ public class ArticleController {
         return articleService.getAllArticles()
                 .stream()
                 .map(ArticleMapper::toDTO)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**
@@ -86,7 +85,7 @@ public class ArticleController {
         return articleService.getArticlesByUserId(userId)
                 .stream()
                 .map(ArticleMapper::toDTO)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**

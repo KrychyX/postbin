@@ -9,6 +9,10 @@ import com.example.demo.model.Article;
  */
 public class ArticleMapper {
 
+    private ArticleMapper() {
+        throw new UnsupportedOperationException("Utility class");
+    }
+
     /**
      * Преобразует сущность {@link Article} в {@link ArticleDTO}.
      *

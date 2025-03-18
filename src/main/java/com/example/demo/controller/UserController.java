@@ -121,6 +121,6 @@ public class UserController {
         return user.getSubscriptions()
                 .stream()
                 .map(UserMapper::toDTO)
-                .collect(Collectors.toList());
+                .toList();
     }
 }
