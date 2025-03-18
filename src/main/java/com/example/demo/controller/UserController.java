@@ -5,7 +5,6 @@ import com.example.demo.mapper.UserMapper;
 import com.example.demo.model.User;
 import com.example.demo.service.UserService;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -57,7 +56,7 @@ public class UserController {
         return userService.getAllUsers()
                 .stream()
                 .map(UserMapper::toDTO)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**
