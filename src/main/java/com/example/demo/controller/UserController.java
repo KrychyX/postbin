@@ -1,93 +1,126 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.UserDTO;
+import com.example.demo.mapper.UserMapper;
+import com.example.demo.model.User;
 import com.example.demo.service.UserService;
-import com.example.demo.thing.Article;
-import com.example.demo.thing.User;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
+import java.util.stream.Collectors;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Контроллер {@code UserController} обрабатывает HTTP-запросы, связанные с пользователями.
- * Этот класс использует аннотацию Spring {@code @RestController}
- * для обозначения того, что он является
- * контроллером, и все методы возвращают данные в формате JSON. Также используется аннотация
- * {@code @RequestMapping} для указания базового пути {@code /api/users}.
+ * Контроллер для управления пользователями.
+ * Предоставляет REST API для создания, получения, обновления и удаления пользователей,
+ * а также для управления подписками пользователей.
  */
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/users")
 public class UserController {
 
-
-    private UserService userService;
+    private final UserService userService;
 
     /**
-     * Конструктор для инициализации контроллера и сервиса пользователей.
+     * Конструктор для внедрения зависимости {@link UserService}.
      *
-     * @param userService Сервис для работы с пользователями.
+     * @param userService сервис для работы с пользователями
      */
-    @Autowired
     public UserController(UserService userService) {
         this.userService = userService;
-        initialize();
     }
 
-    private void initialize() {
-
-        User user1 = new User(null, "admin", "admin228@gmail.com",
-                List.of(new Article("Spring", "Java is cool")));
-        userService.createUser(user1);
-
-        User user2 = new User(null, "No admin", "krychok@gmail.com",
-                List.of(new Article("What", "bla bla bly")));
-        userService.createUser(user2);
-
-        User user3 = new User(null, "kirill", "krychka96@gmail.com",
-                List.of(new Article("Bike", "i like motorbike")));
-        userService.createUser(user3);
-
+    /**
+     * Создает нового пользователя.
+     *
+     * @param user данные пользователя
+     * @return DTO созданного пользователя
+     */
+    @PostMapping
+    public UserDTO createUser(@RequestBody User user) {
+        User createdUser = userService.createUser(user);
+        return UserMapper.toDTO(createdUser);
     }
-
 
     /**
      * Возвращает список всех пользователей.
      *
-     * @return Список всех пользователей.
+     * @return список DTO пользователей
      */
     @GetMapping
-    public List<User> getAllUsers() {
-        return userService.getAllUsers();
+    public List<UserDTO> getAllUsers() {
+        return userService.getAllUsers()
+                .stream()
+                .map(UserMapper::toDTO)
+                .collect(Collectors.toList());
     }
 
     /**
-     * Возвращает пользователя по его уникальному идентификатору.
+     * Возвращает пользователя по его идентификатору.
      *
-     * @param id Уникальный идентификатор пользователя.
-     * @return Ответ с найденным пользователем в формате JSON.
+     * @param id идентификатор пользователя
+     * @return DTO пользователя
      */
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable Long id) {
+    public UserDTO getUserById(@PathVariable Long id) {
         User user = userService.getUserById(id);
-        return ResponseEntity.ok(user);
+        return UserMapper.toDTO(user);
     }
 
     /**
-     * Возвращает список пользователей, отфильтрованных по электронной почте и/или имени.
-     * Если параметр {@code email} или {@code name} не указан, он игнорируется при фильтрации.
+     * Обновляет данные пользователя по его идентификатору.
      *
-     * @param email Электронная почта для фильтрации (необязательный параметр).
-     * @param name  Имя для фильтрации (необязательный параметр).
-     * @return Список пользователей, соответствующих критериям фильтрации.
+     * @param id          идентификатор пользователя
+     * @param userDetails  новые данные пользователя
+     * @return DTO обновленного пользователя
      */
-    @GetMapping("/search")
-    public List<User> getUsersByEmailOrName(
-            @RequestParam(required = false) String email,
-            @RequestParam(required = false) String name) {
-        return userService.getUsersByEmailOrName(email, name);
+    @PutMapping("/{id}")
+    public UserDTO updateUser(@PathVariable Long id, @RequestBody User userDetails) {
+        User updatedUser = userService.updateUser(id, userDetails);
+        return UserMapper.toDTO(updatedUser);
+    }
+
+    /**
+     * Удаляет пользователя по его идентификатору.
+     *
+     * @param id идентификатор пользователя
+     */
+    @DeleteMapping("/{id}")
+    public void deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
+    }
+
+    /**
+     * Добавляет подписку пользователя на другого пользователя.
+     *
+     * @param subscriberId идентификатор пользователя, который подписывается
+     * @param channelId    идентификатор пользователя, на которого подписываются
+     */
+    @PostMapping("/{subscriberId}/subscribe/{channelId}")
+    public void subscribe(
+            @PathVariable Long subscriberId,
+            @PathVariable Long channelId
+    ) {
+        userService.addSubscription(subscriberId, channelId);
+    }
+
+    /**
+     * Возвращает список подписок пользователя.
+     *
+     * @param userId идентификатор пользователя
+     * @return список DTO пользователей, на которых подписан текущий пользователь
+     */
+    @GetMapping("/{userId}/subscriptions")
+    public List<UserDTO> getSubscriptions(@PathVariable Long userId) {
+        User user = userService.getUserById(userId);
+        return user.getSubscriptions()
+                .stream()
+                .map(UserMapper::toDTO)
+                .collect(Collectors.toList());
     }
 }
