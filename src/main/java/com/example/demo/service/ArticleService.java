@@ -4,6 +4,7 @@ import com.example.demo.model.Article;
 import com.example.demo.model.User;
 import com.example.demo.repository.ArticleRepository;
 import com.example.demo.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -35,8 +36,10 @@ public class ArticleService {
      * @param article данные статьи
      * @return сохраненная статья
      */
+    @Transactional
     public Article createArticle(Long userId, Article article) {
-        User user = userRepository.findById(userId).orElse(null);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User Not Found"));
         article.setUser(user);
         return articleRepository.save(article);
     }

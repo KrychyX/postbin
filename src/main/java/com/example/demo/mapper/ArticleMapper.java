@@ -25,7 +25,7 @@ public class ArticleMapper {
         dto.setId(article.getId());
         dto.setTitle(article.getTitle());
         dto.setContent(article.getContent());
-        dto.setAuthor(article.getUser().getName()); // Имя автора
+        dto.setAuthor(article.getUser().getName());
         return dto;
     }
 }
