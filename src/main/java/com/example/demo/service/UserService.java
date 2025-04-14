@@ -1,9 +1,13 @@
 package com.example.demo.service;
 
+import com.example.demo.exception.BadRequestException;
+import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.model.User;
 import com.example.demo.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -14,6 +18,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class UserService {
 
+    private static final Logger logger = LoggerFactory.getLogger(UserService.class);
     private final UserRepository userRepository;
 
     /**
@@ -31,11 +36,28 @@ public class UserService {
      * @param user данные пользователя
      * @return сохраненный пользователь
      */
+    @Transactional
     public User createUser(User user) {
-        return userRepository.save(user);
+        logger.info("Попытка создания пользователя с email: {}", user.getEmail());
+        if (user == null || user.getName() == null || user.getName().isBlank()) {
+            logger.error("Имя пользователя обязательно");
+            throw new BadRequestException("Имя пользователя обязательно");
+        }
+        if (user.getEmail() == null || !user.getEmail().contains("@")) {
+            logger.error("Некорректный формат email: {}", user.getEmail());
+            throw new BadRequestException("Требуется корректный email");
+        }
+
+        User savedUser = userRepository.save(user);
+        logger.info("Пользователь успешно создан с ID: {}", savedUser.getId());
+        return savedUser;
     }
 
+    /**
+     * Возвращает всех пользователей.
+     */
     public List<User> getAllUsers() {
+        logger.info("Получение списка всех пользователей");
         return userRepository.findAll();
     }
 
@@ -47,8 +69,16 @@ public class UserService {
      * @throws RuntimeException если пользователь не найден
      */
     public User getUserById(Long id) {
+        logger.info("Получение пользователя по ID: {}", id);
+        if (id == null) {
+            logger.error("ID пользователя не может быть null");
+            throw new BadRequestException("ID пользователя не может быть null");
+        }
         return userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+                .orElseThrow(() -> {
+                    logger.error("Пользователь с ID {} не найден", id);
+                    return new ResourceNotFoundException("Пользователь с ID " + id + " не найден");
+                });
     }
 
     /**
@@ -58,11 +88,27 @@ public class UserService {
      * @param userDetails новые данные пользователя
      * @return обновленный пользователь
      */
+    @Transactional
     public User updateUser(Long id, User userDetails) {
+        logger.info("Обновление пользователя с ID: {}", id);
         User user = getUserById(id);
-        user.setName(userDetails.getName());
-        user.setEmail(userDetails.getEmail());
-        return userRepository.save(user);
+
+        if (userDetails.getName() != null) {
+            logger.debug("Обновление имени для пользователя с ID: {}", id);
+            user.setName(userDetails.getName());
+        }
+        if (userDetails.getEmail() != null) {
+            if (!userDetails.getEmail().contains("@")) {
+                logger.error("Некорректный формат email: {}", userDetails.getEmail());
+                throw new BadRequestException("Некорректный формат email");
+            }
+            logger.debug("Обновление email для пользователя с ID: {}", id);
+            user.setEmail(userDetails.getEmail());
+        }
+
+        User updatedUser = userRepository.save(user);
+        logger.info("Пользователь с ID {} успешно обновлен", id);
+        return updatedUser;
     }
 
     /**
@@ -73,10 +119,14 @@ public class UserService {
      */
     @Transactional
     public void deleteUser(Long id) {
+        logger.info("Удаление пользователя с ID: {}", id);
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+                .orElseThrow(() -> {
+                    logger.error("Пользователь с ID {} не найден", id);
+                    return new RuntimeException("Пользователь с ID " + id + " не найден");
+                });
 
-
+        logger.debug("Очистка подписок для пользователя с ID: {}", id);
         for (User subscriber : user.getSubscribers()) {
             subscriber.getSubscriptions().remove(user);
         }
@@ -89,8 +139,8 @@ public class UserService {
         user.getSubscriptions().clear();
 
         userRepository.save(user);
-
         userRepository.delete(user);
+        logger.info("Пользователь с ID {} успешно удален", id);
     }
 
     /**
@@ -102,16 +152,27 @@ public class UserService {
      */
     @Transactional
     public void addSubscription(Long subscriberId, Long channelId) {
+        logger.info("Добавление подписки от пользователя {} на пользователя {}",
+                subscriberId, channelId);
+        if (subscriberId == null || channelId == null) {
+            logger.error("ID подписчика и канала не могут быть null");
+            throw new BadRequestException("ID подписчика и канала не могут быть null");
+        }
+        if (subscriberId.equals(channelId)) {
+            logger.error("Пользователь {} пытается подписаться на самого себя", subscriberId);
+            throw new BadRequestException("Пользователь не может подписаться на самого себя");
+        }
 
-        User subscriber = userRepository.findById(subscriberId)
-                .orElseThrow(() -> new RuntimeException(
-                        "Subscriber not found with id: " + subscriberId));
+        User subscriber = getUserById(subscriberId);
+        User channel = getUserById(channelId);
 
-        User channel = userRepository.findById(channelId)
-                .orElseThrow(() -> new RuntimeException(
-                        "Channel not found with id: " + channelId));
+        if (subscriber.getSubscriptions().contains(channel)) {
+            logger.error("Подписка от {} на {} уже существует", subscriberId, channelId);
+            throw new BadRequestException("Подписка уже существует");
+        }
 
         subscriber.getSubscriptions().add(channel);
         userRepository.save(subscriber);
+        logger.info("Подписка от {} на {} успешно добавлена", subscriberId, channelId);
     }
 }

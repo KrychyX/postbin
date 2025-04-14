@@ -4,6 +4,12 @@ import com.example.demo.dto.UserDTO;
 import com.example.demo.mapper.UserMapper;
 import com.example.demo.model.User;
 import com.example.demo.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/users")
+@Tag(name = "User Controller", description = "API для управления пользователями и их подписками")
 public class UserController {
 
     private final UserService userService;
@@ -40,8 +47,15 @@ public class UserController {
      * @param user данные пользователя
      * @return DTO созданного пользователя
      */
+    @Operation(summary = "Создать пользователя", description = "Создает нового пользователя")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Пользователь успешно создан"),
+        @ApiResponse(responseCode = "400", description = "Неверные входные данные")
+    })
     @PostMapping
-    public UserDTO createUser(@RequestBody User user) {
+    public UserDTO createUser(
+            @Parameter(description = "Данные пользователя") @RequestBody @Valid User user
+    ) {
         User createdUser = userService.createUser(user);
         return UserMapper.toDTO(createdUser);
     }
@@ -51,6 +65,9 @@ public class UserController {
      *
      * @return список DTO пользователей
      */
+    @Operation(summary = "Получить всех пользователей",
+            description = "Возвращает список всех пользователей")
+    @ApiResponse(responseCode = "200", description = "Список пользователей успешно получен")
     @GetMapping
     public List<UserDTO> getAllUsers() {
         return userService.getAllUsers()
@@ -65,8 +82,16 @@ public class UserController {
      * @param id идентификатор пользователя
      * @return DTO пользователя
      */
+    @Operation(summary = "Получить пользователя по ID",
+            description = "Возвращает пользователя по его идентификатору")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Пользователь успешно найден"),
+        @ApiResponse(responseCode = "404", description = "Пользователь не найден")
+    })
     @GetMapping("/{id}")
-    public UserDTO getUserById(@PathVariable Long id) {
+    public UserDTO getUserById(
+            @Parameter(description = "ID пользователя") @PathVariable Long id
+    ) {
         User user = userService.getUserById(id);
         return UserMapper.toDTO(user);
     }
@@ -78,8 +103,18 @@ public class UserController {
      * @param userDetails  новые данные пользователя
      * @return DTO обновленного пользователя
      */
+    @Operation(summary = "Обновить пользователя",
+            description = "Обновляет данные пользователя по его идентификатору")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Пользователь успешно обновлен"),
+        @ApiResponse(responseCode = "400", description = "Неверные входные данные"),
+        @ApiResponse(responseCode = "404", description = "Пользователь не найден")
+    })
     @PutMapping("/{id}")
-    public UserDTO updateUser(@PathVariable Long id, @RequestBody User userDetails) {
+    public UserDTO updateUser(
+            @Parameter(description = "ID пользователя") @PathVariable Long id,
+            @Parameter(description = "Новые данные пользователя")
+            @RequestBody @Valid User userDetails) {
         User updatedUser = userService.updateUser(id, userDetails);
         return UserMapper.toDTO(updatedUser);
     }
@@ -89,8 +124,16 @@ public class UserController {
      *
      * @param id идентификатор пользователя
      */
+    @Operation(summary = "Удалить пользователя",
+            description = "Удаляет пользователя по его идентификатору")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Пользователь успешно удален"),
+        @ApiResponse(responseCode = "404", description = "Пользователь не найден")
+    })
     @DeleteMapping("/{id}")
-    public void deleteUser(@PathVariable Long id) {
+    public void deleteUser(
+            @Parameter(description = "ID пользователя") @PathVariable Long id
+    ) {
         userService.deleteUser(id);
     }
 
@@ -100,10 +143,17 @@ public class UserController {
      * @param subscriberId идентификатор пользователя, который подписывается
      * @param channelId    идентификатор пользователя, на которого подписываются
      */
+    @Operation(summary = "Добавить подписку",
+            description = "Добавляет подписку пользователя на другого пользователя")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Подписка успешно добавлена"),
+        @ApiResponse(responseCode = "404", description = "Пользователь не найден"),
+        @ApiResponse(responseCode = "400", description = "Невозможно подписаться на самого себя")
+    })
     @PostMapping("/{subscriberId}/subscribe/{channelId}")
     public void subscribe(
-            @PathVariable Long subscriberId,
-            @PathVariable Long channelId
+            @Parameter(description = "ID подписчика") @PathVariable Long subscriberId,
+            @Parameter(description = "ID канала") @PathVariable Long channelId
     ) {
         userService.addSubscription(subscriberId, channelId);
     }
@@ -114,11 +164,41 @@ public class UserController {
      * @param userId идентификатор пользователя
      * @return список DTO пользователей, на которых подписан текущий пользователь
      */
+    @Operation(summary = "Получить подписки",
+            description = "Возвращает список подписок пользователя")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Список подписок успешно получен"),
+        @ApiResponse(responseCode = "404", description = "Пользователь не найден")
+    })
     @GetMapping("/{userId}/subscriptions")
-    public List<UserDTO> getSubscriptions(@PathVariable Long userId) {
+    public List<UserDTO> getSubscriptions(
+            @Parameter(description = "ID пользователя") @PathVariable Long userId
+    ) {
         User user = userService.getUserById(userId);
         return user.getSubscriptions()
                 .stream()
+                .map(UserMapper::toDTO)
+                .toList();
+    }
+
+    /**
+     * Создает нескольких пользователей.
+     *
+     * @param users список пользователей
+     * @return список DTO созданных пользователей
+     */
+    @Operation(summary = "Создать нескольких пользователей",
+            description = "Создает нескольких пользователей")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Пользователи успешно созданы"),
+        @ApiResponse(responseCode = "400", description = "Неверные входные данные")
+    })
+    @PostMapping("/bulk")
+    public List<UserDTO> createUsersBulk(
+            @Parameter(description = "Список пользователей") @RequestBody @Valid List<User> users
+    ) {
+        return users.stream()
+                .map(userService::createUser)
                 .map(UserMapper::toDTO)
                 .toList();
     }

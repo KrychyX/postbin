@@ -2,6 +2,7 @@ package com.example.demo;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
 
 /**
  * Основной класс приложения, который запускает Spring Boot приложение.
@@ -9,6 +10,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * и сканирования компонентов приложения.
  */
 @SpringBootApplication
+@EnableAspectJAutoProxy
 public class Application {
 
     /**
