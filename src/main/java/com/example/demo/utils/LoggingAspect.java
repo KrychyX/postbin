@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 /**
  * Aspect for logging method execution in controllers.
  *
- * <p>Provides cross-cutting logging functionality for:
+ * <p>Provides conditional cross-cutting logging functionality for:
  * <ul>
  *   <li>Method entry (before execution)</li>
  *   <li>Successful method completion</li>
@@ -24,40 +24,83 @@ import org.springframework.stereotype.Component;
 public class LoggingAspect {
 
     private static final Logger logger = LoggerFactory.getLogger(LoggingAspect.class);
+    private static final boolean ENABLE_ARGS_LOGGING = false;
+    private static final boolean ENABLE_RESULT_LOGGING = false;
 
     /**
      * Logs method entry before controller method execution.
-     *
-     * @param joinPoint the join point containing method information
+     * Only logs method signature unless args logging is enabled.
      */
     @Before("execution(* com.example.demo.controller.*.*(..))")
     public void logBefore(JoinPoint joinPoint) {
-        logger.info("Вызов метода: {} с аргументами: {}",
-                joinPoint.getSignature().toShortString(), joinPoint.getArgs());
+        if (logger.isInfoEnabled()) {
+            String methodInfo = joinPoint.getSignature().toShortString();
+            if (ENABLE_ARGS_LOGGING) {
+                logger.info("Method called: {} with args: {}",
+                        methodInfo, sanitizeArguments(joinPoint.getArgs()));
+            } else {
+                logger.info("Method called: {}", methodInfo);
+            }
+        }
     }
 
     /**
      * Logs successful method completion in controllers.
-     *
-     * @param joinPoint the join point containing method information
-     * @param result the method return value
+     * Only logs if result logging is enabled.
      */
-    @AfterReturning(pointcut = "execution(* com.example.demo.controller.*.*(..))",
-            returning = "result")
+    @AfterReturning(
+            pointcut = "execution(* com.example.demo.controller.*.*(..))",
+            returning = "result"
+    )
     public void logAfterReturning(JoinPoint joinPoint, Object result) {
-        logger.info("Метод {} успешно выполнен. Результат: {}",
-                joinPoint.getSignature().toShortString(), result);
+        if (logger.isInfoEnabled() && ENABLE_RESULT_LOGGING) {
+            logger.info("Method completed: {}",
+                    joinPoint.getSignature().toShortString());
+        }
     }
 
     /**
      * Logs exceptions thrown by any method in the application.
-     *
-     * @param joinPoint the join point containing method information
-     * @param error the thrown exception
+     * Always logs errors but sanitizes sensitive information.
      */
-    @AfterThrowing(pointcut = "execution(* com.example.demo..*.*(..))", throwing = "error")
+    @AfterThrowing(
+            pointcut = "execution(* com.example.demo..*.*(..))",
+            throwing = "error"
+    )
     public void logAfterThrowing(JoinPoint joinPoint, Throwable error) {
-        logger.error("Ошибка в методе: {}. Причина: {}",
-                joinPoint.getSignature().toShortString(), error.getMessage(), error);
+        if (logger.isErrorEnabled()) {
+            logger.error("Error in method: {}. Reason: {}",
+                    joinPoint.getSignature().toShortString(),
+                    error.getMessage());
+        }
+    }
+
+    /**
+     * Sanitizes arguments to prevent logging sensitive data.
+     */
+    private Object[] sanitizeArguments(Object[] args) {
+        if (args == null) {
+            return null;
+        }
+
+        Object[] sanitized = new Object[args.length];
+        for (int i = 0; i < args.length; i++) {
+            if (args[i] != null && isSensitiveType(args[i].getClass())) {
+                sanitized[i] = "[PROTECTED]";
+            } else {
+                sanitized[i] = args[i];
+            }
+        }
+        return sanitized;
+    }
+
+    /**
+     * Checks if the type might contain sensitive data.
+     */
+    private boolean isSensitiveType(Class<?> type) {
+        return type.getName().contains("Password")
+                || type.getName().contains("Secret")
+                || type.getName().contains("Token")
+                || type.getName().contains("Credentials");
     }
 }

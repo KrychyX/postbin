@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class ExceptionsTest {
 
     @Test
-    void accessDeniedException_HasCorrectResponseStatus() throws NoSuchFieldException {
+    void accessDeniedException_HasCorrectResponseStatus() {
         ResponseStatus annotation = AccessDeniedException.class.getAnnotation(ResponseStatus.class);
         assertNotNull(annotation);
         assertEquals(HttpStatus.FORBIDDEN, annotation.value());

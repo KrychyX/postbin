@@ -7,8 +7,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-
-import java.io.IOException;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -20,7 +18,7 @@ class LogControllerTest {
     private LogController logController;
 
     @Test
-    void getLogFileByDate_NoMatchingEntries_ReturnsNoContent() throws IOException {
+    void getLogFileByDate_NoMatchingEntries_ReturnsNoContent() {
         // Arrange
         String testDate = LocalDate.now().plusDays(1).toString(); // Future date with no logs
 

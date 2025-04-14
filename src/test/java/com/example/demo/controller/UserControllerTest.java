@@ -144,8 +144,8 @@ class UserControllerTest {
         savedUser1.setId(1L);
         User savedUser2 = new User();
         savedUser2.setId(2L);
-        when(userService.createUser(eq(user1))).thenReturn(savedUser1);
-        when(userService.createUser(eq(user2))).thenReturn(savedUser2);
+        when(userService.createUser((user1))).thenReturn(savedUser1);
+        when(userService.createUser((user2))).thenReturn(savedUser2);
 
         // Act
         List<UserDTO> result = userController.createUsersBulk(users);
