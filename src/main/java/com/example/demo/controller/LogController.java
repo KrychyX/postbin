@@ -4,15 +4,20 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFilePermission;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -31,7 +36,10 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Log Controller", description = "API для работы с логами")
 public class LogController {
 
+    private static final Logger logger = LoggerFactory.getLogger(LogController.class);
     private static final String LOG_FILE_PATH = "application.log";
+    private static final Set<PosixFilePermission> TEMP_FILE_PERMISSIONS =
+            EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
 
     /**
      * Downloads log file filtered by specified date.
@@ -67,9 +75,15 @@ public class LogController {
             return ResponseEntity.noContent().build();
         }
 
-        File tempFile = File.createTempFile("logs-" + dateString, ".log");
-        Files.write(tempFile.toPath(), filteredLines);
-        tempFile.deleteOnExit();
+       
+        Path tempFile = Files.createTempFile("logs-" + dateString, ".log");
+        try {
+            Files.write(tempFile, filteredLines, StandardOpenOption.CREATE);
+            Files.setPosixFilePermissions(tempFile, TEMP_FILE_PERMISSIONS);
+        } catch (UnsupportedOperationException e) {
+            logger.warn("POSIX file permissions not supported on this system");
+        }
+        tempFile.toFile().deleteOnExit();
 
         return ResponseEntity.ok()
                 .header("Content-Disposition", "attachment; filename=logs-" + dateString + ".log")
