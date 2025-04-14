@@ -15,7 +15,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.FileSystemResource;
@@ -71,55 +70,67 @@ public class LogController {
 
             Path logFilePath = Paths.get(LOG_FILE_PATH).normalize().toAbsolutePath();
             if (!Files.exists(logFilePath)) {
-                logger.warn("Log file not found at path: {}", logFilePath);
+                logger.warn("Log file not found");
                 return ResponseEntity.notFound().build();
             }
 
             List<String> filteredLines = Files.lines(logFilePath)
                     .filter(line -> line.contains(dateString))
-                    .collect(Collectors.toList());
+                    .toList(); // Changed from collect(Collectors.toList())
 
             if (filteredLines.isEmpty()) {
-                logger.info("No logs found for date: {}", dateString);
+                logger.info("No logs found for the specified date");
                 return ResponseEntity.noContent().build();
             }
 
-            Path tempDir = Paths.get(System.getProperty("java.io.tmpdir"));
-            Path tempFile = Files.createTempFile(tempDir,
-                    LOG_FILE_PREFIX + dateString + "_",
-                    LOG_FILE_SUFFIX);
+            Path tempFile = createTempLogFile(dateString, filteredLines);
+            String contentDisposition = "attachment; filename="
+                    + LOG_FILE_PREFIX + dateString + LOG_FILE_SUFFIX;
+
+            return ResponseEntity.ok()
+                    .header("Content-Disposition", contentDisposition)
+                    .body(new FileSystemResource(tempFile));
+        } catch (Exception e) {
+            logger.error("Error processing log file request", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Creates a temporary log file with the filtered content.
+     *
+     * @param dateString the date string for file naming
+     * @param content the filtered log content
+     * @return Path to the created temporary file
+     * @throws IOException if file operations fail
+     */
+    private Path createTempLogFile(String dateString, List<String> content) throws IOException {
+        Path tempDir = Paths.get(System.getProperty("java.io.tmpdir"));
+        Path tempFile = Files.createTempFile(tempDir,
+                LOG_FILE_PREFIX + dateString + "_",
+                LOG_FILE_SUFFIX);
+
+        try {
+            Files.write(tempFile, content,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING);
 
             try {
-                Files.write(tempFile, filteredLines,
-                        StandardOpenOption.CREATE,
-                        StandardOpenOption.TRUNCATE_EXISTING);
-
-                try {
-                    Files.setPosixFilePermissions(tempFile, TEMP_FILE_PERMISSIONS);
-                } catch (UnsupportedOperationException e) {
-                    logger.debug("POSIX file permissions not supported on this system");
-                }
-
-                tempFile.toFile().deleteOnExit();
-
-                String contentDisposition = "attachment; filename="
-                        + LOG_FILE_PREFIX + dateString + LOG_FILE_SUFFIX;
-
-                return ResponseEntity.ok()
-                        .header("Content-Disposition", contentDisposition)
-                        .body(new FileSystemResource(tempFile));
-            } catch (IOException e) {
-                logger.error("Failed to write to temporary file", e);
-                try {
-                    Files.deleteIfExists(tempFile);
-                } catch (IOException ex) {
-                    logger.error("Failed to delete temporary file", ex);
-                }
-                return ResponseEntity.internalServerError().build();
+                Files.setPosixFilePermissions(tempFile, TEMP_FILE_PERMISSIONS);
+            } catch (UnsupportedOperationException e) {
+                logger.debug("POSIX file permissions not supported on this system");
             }
-        } catch (Exception e) {
-            logger.error("Error processing log file request for date: {}", date, e);
-            return ResponseEntity.internalServerError().build();
+
+            tempFile.toFile().deleteOnExit();
+            return tempFile;
+        } catch (IOException e) {
+            logger.error("Failed to write to temporary file", e);
+            try {
+                Files.deleteIfExists(tempFile);
+            } catch (IOException ex) {
+                logger.error("Failed to delete temporary file", ex);
+            }
+            throw e;
         }
     }
 }
