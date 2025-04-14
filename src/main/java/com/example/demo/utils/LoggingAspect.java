@@ -80,7 +80,7 @@ public class LoggingAspect {
      */
     private Object[] sanitizeArguments(Object[] args) {
         if (args == null) {
-            return null;
+            return new Object[0];
         }
 
         Object[] sanitized = new Object[args.length];
