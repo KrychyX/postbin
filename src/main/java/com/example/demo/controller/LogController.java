@@ -40,6 +40,8 @@ public class LogController {
     private static final String LOG_FILE_PATH = "application.log";
     private static final Set<PosixFilePermission> TEMP_FILE_PERMISSIONS =
             EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+    private static final String LOG_FILE_PREFIX = "logs-";
+    private static final String LOG_FILE_SUFFIX = ".log";
 
     /**
      * Downloads log file filtered by specified date.
@@ -58,12 +60,18 @@ public class LogController {
             @Parameter(description = "Дата в формате yyyy-MM-dd")
             @RequestParam String date) {
 
+        if (date == null || date.isEmpty()) {
+            logger.warn("Empty date parameter received");
+            return ResponseEntity.badRequest().build();
+        }
+
         try {
             LocalDate logDate = LocalDate.parse(date, DateTimeFormatter.ISO_DATE);
             String dateString = logDate.format(DateTimeFormatter.ISO_DATE);
 
-            Path logFilePath = Paths.get(LOG_FILE_PATH);
+            Path logFilePath = Paths.get(LOG_FILE_PATH).normalize().toAbsolutePath();
             if (!Files.exists(logFilePath)) {
+                logger.warn("Log file not found at path: {}", logFilePath);
                 return ResponseEntity.notFound().build();
             }
 
@@ -72,26 +80,45 @@ public class LogController {
                     .collect(Collectors.toList());
 
             if (filteredLines.isEmpty()) {
+                logger.info("No logs found for date: {}", dateString);
                 return ResponseEntity.noContent().build();
             }
 
-            // Создаем временный файл с безопасными правами доступа
-            Path tempFile = Files.createTempFile("logs-" + dateString, ".log");
+            Path tempDir = Paths.get(System.getProperty("java.io.tmpdir"));
+            Path tempFile = Files.createTempFile(tempDir,
+                    LOG_FILE_PREFIX + dateString + "_",
+                    LOG_FILE_SUFFIX);
+
             try {
-                Files.write(tempFile, filteredLines, StandardOpenOption.CREATE);
-                Files.setPosixFilePermissions(tempFile, TEMP_FILE_PERMISSIONS);
-            } catch (UnsupportedOperationException e) {
-                logger.warn("POSIX file permissions not supported on this system");
+                Files.write(tempFile, filteredLines,
+                        StandardOpenOption.CREATE,
+                        StandardOpenOption.TRUNCATE_EXISTING);
+
+                try {
+                    Files.setPosixFilePermissions(tempFile, TEMP_FILE_PERMISSIONS);
+                } catch (UnsupportedOperationException e) {
+                    logger.debug("POSIX file permissions not supported on this system");
+                }
+
+                tempFile.toFile().deleteOnExit();
+
+                String contentDisposition = "attachment; filename="
+                        + LOG_FILE_PREFIX + dateString + LOG_FILE_SUFFIX;
+
+                return ResponseEntity.ok()
+                        .header("Content-Disposition", contentDisposition)
+                        .body(new FileSystemResource(tempFile));
+            } catch (IOException e) {
+                logger.error("Failed to write to temporary file", e);
+                try {
+                    Files.deleteIfExists(tempFile);
+                } catch (IOException ex) {
+                    logger.error("Failed to delete temporary file", ex);
+                }
+                return ResponseEntity.internalServerError().build();
             }
-
-            tempFile.toFile().deleteOnExit();
-
-            return ResponseEntity.ok()
-                    .header("Content-Disposition", "attachment; filename=logs-"
-                            + dateString + ".log")
-                    .body(new FileSystemResource(tempFile));
-        } catch (IOException e) {
-            logger.error("Error processing log file request", e);
+        } catch (Exception e) {
+            logger.error("Error processing log file request for date: {}", date, e);
             return ResponseEntity.internalServerError().build();
         }
     }
