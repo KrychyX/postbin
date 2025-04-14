@@ -107,14 +107,18 @@ public class LogController {
         }
     }
 
+
     private void writeContentToFile(Path file, List<String> content) throws IOException {
         try {
             Files.write(file, content,
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING);
         } catch (IOException e) {
-            logger.error("Failed to write content to temporary file: {}", file, e);
-            throw e;
+            String errorMsg =
+                    String.format("Failed to write content to temporary file: %s. Reason: %s",
+                    file.toAbsolutePath(), e.getMessage());
+            logger.error(errorMsg);
+            throw new IOException(errorMsg, e);
         }
     }
 
