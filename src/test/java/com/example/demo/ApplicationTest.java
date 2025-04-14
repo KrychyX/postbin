@@ -10,8 +10,5 @@ class ApplicationTest {
     void contextLoads() {
         // Basic assertion to verify the test runs
         assertTrue(true, "Context should load successfully");
-
-        // Alternatively, you could check for specific beans if needed:
-        // assertNotNull(applicationContext.getBean(SomeService.class));
     }
 }

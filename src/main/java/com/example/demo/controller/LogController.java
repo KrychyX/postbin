@@ -43,13 +43,7 @@ public class LogController {
     private static final String LOG_FILE_SUFFIX = ".log";
 
     /**
-     * Downloads log file filtered by specified date.
-     *
-     * <p>Reads the application log file, filters lines by the requested date, and returns them
-     * as a downloadable file. If no logs exist for the specified date, returns 204 No Content.
-     *
-     * @param date the date to filter logs in format yyyy-MM-dd
-     * @return ResponseEntity containing filtered log file or appropriate status code
+     * Получает лог файл.
      */
     @Operation(summary = "Получить лог-файл за указанную дату",
             description = "Возвращает лог-файл, отфильтрованный по дате")
@@ -76,7 +70,7 @@ public class LogController {
 
             List<String> filteredLines = Files.lines(logFilePath)
                     .filter(line -> line.contains(dateString))
-                    .toList(); // Changed from collect(Collectors.toList())
+                    .toList();
 
             if (filteredLines.isEmpty()) {
                 logger.info("No logs found for the specified date");
@@ -91,19 +85,11 @@ public class LogController {
                     .header("Content-Disposition", contentDisposition)
                     .body(new FileSystemResource(tempFile));
         } catch (Exception e) {
-            logger.error("Error processing log file request", e);
+            logger.error("Error processing log file request for date: {}", date, e);
             return ResponseEntity.internalServerError().build();
         }
     }
 
-    /**
-     * Creates a temporary log file with the filtered content.
-     *
-     * @param dateString the date string for file naming
-     * @param content the filtered log content
-     * @return Path to the created temporary file
-     * @throws IOException if file operations fail
-     */
     private Path createTempLogFile(String dateString, List<String> content) throws IOException {
         Path tempDir = Paths.get(System.getProperty("java.io.tmpdir"));
         Path tempFile = Files.createTempFile(tempDir,
@@ -111,26 +97,43 @@ public class LogController {
                 LOG_FILE_SUFFIX);
 
         try {
-            Files.write(tempFile, content,
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.TRUNCATE_EXISTING);
-
-            try {
-                Files.setPosixFilePermissions(tempFile, TEMP_FILE_PERMISSIONS);
-            } catch (UnsupportedOperationException e) {
-                logger.debug("POSIX file permissions not supported on this system");
-            }
-
+            writeContentToFile(tempFile, content);
+            setSecureFilePermissions(tempFile);
             tempFile.toFile().deleteOnExit();
             return tempFile;
         } catch (IOException e) {
-            logger.error("Failed to write to temporary file", e);
-            try {
-                Files.deleteIfExists(tempFile);
-            } catch (IOException ex) {
-                logger.error("Failed to delete temporary file", ex);
-            }
+            handleTempFileError(tempFile, e);
+            throw new IOException("Failed to create temporary log file for date: " + dateString, e);
+        }
+    }
+
+    private void writeContentToFile(Path file, List<String> content) throws IOException {
+        try {
+            Files.write(file, content,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING);
+        } catch (IOException e) {
+            logger.error("Failed to write content to temporary file: {}", file, e);
             throw e;
+        }
+    }
+
+    private void setSecureFilePermissions(Path file) {
+        try {
+            Files.setPosixFilePermissions(file, TEMP_FILE_PERMISSIONS);
+        } catch (UnsupportedOperationException e) {
+            logger.debug("POSIX file permissions not supported on this system");
+        } catch (IOException e) {
+            logger.warn("Failed to set permissions for file: {}", file, e);
+        }
+    }
+
+    private void handleTempFileError(Path tempFile, IOException e) {
+        logger.error("Error processing temporary file: {}", tempFile, e);
+        try {
+            Files.deleteIfExists(tempFile);
+        } catch (IOException ex) {
+            logger.error("Failed to cleanup temporary file: {}", tempFile, ex);
         }
     }
 }

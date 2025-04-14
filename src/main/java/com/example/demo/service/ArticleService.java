@@ -161,7 +161,7 @@ public class ArticleService {
      * @return список статей, написанных указанным автором
      */
     public List<Article> findByAuthorName(String authorName) {
-        logger.info("Поиск статей автора: {}", authorName);
+        logger.info("Поиск статей автора:");
         if (authorName == null || authorName.isBlank()) {
             logger.error("Имя автора не может быть пустым");
             throw new BadRequestException("Имя автора не может быть пустым");
@@ -169,16 +169,16 @@ public class ArticleService {
 
         List<Article> articles = articleCacheByAuthor.get(authorName);
         if (articles == null) {
-            logger.debug("Данные для автора {} не найдены в кэше, запрос к БД", authorName);
+            logger.debug("Данные для автора не найдены в кэше, запрос к БД");
             articles = articleRepository.findByAuthorName(authorName);
             if (articles.isEmpty()) {
-                logger.error("Статьи автора {} не найдены", authorName);
+                logger.error("Статьи автора не найдены");
                 throw new ResourceNotFoundException("Статьи автора " + authorName + " не найдены");
             }
             articleCacheByAuthor.put(authorName, articles);
-            logger.debug("Данные автора {} сохранены в кэш", authorName);
+            logger.debug("Данные автора сохранены в кэш");
         } else {
-            logger.debug("Данные автора {} найдены в кэше", authorName);
+            logger.debug("Данные автора найдены в кэше");
         }
         return articles;
     }
