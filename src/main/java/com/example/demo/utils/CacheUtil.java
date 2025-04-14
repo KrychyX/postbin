@@ -35,8 +35,7 @@ public class CacheUtil<K, V> {
             protected boolean removeEldestEntry(final Map.Entry<K, V> eldest) {
                 boolean shouldRemove = size() > maxSize;
                 if (shouldRemove) {
-                    LOGGER.info("Удалена старая запись (достигнут лимит {} элементов): Ключ {}",
-                            maxSize, eldest.getKey());
+                    LOGGER.info("Удалена старая запись (достигнут лимит элементов)");
                 }
                 return shouldRemove;
             }
@@ -54,9 +53,9 @@ public class CacheUtil<K, V> {
         try {
             V value = cache.get(key);
             if (value != null) {
-                LOGGER.info("Получено из кэша по ключу: {}", key);
+                LOGGER.info("Получено из кэша по ключу: ");
             } else {
-                LOGGER.info("Данные не найдены в кэше по ключу: {}", key);
+                LOGGER.info("Данные не найдены в кэше по ключу:");
             }
             return value;
         } finally {
@@ -78,8 +77,7 @@ public class CacheUtil<K, V> {
         lock.lock();
         try {
             cache.put(key, value);
-            LOGGER.info("Сохранено в кэш. Ключ: {}, Текущий размер: {}/{}",
-                    key, cache.size(), maxSize);
+            LOGGER.info("Сохранено в кэш.");
         } finally {
             lock.unlock();
         }
