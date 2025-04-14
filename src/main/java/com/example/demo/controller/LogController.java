@@ -49,7 +49,6 @@ public class LogController {
      *
      * @param date the date to filter logs in format yyyy-MM-dd
      * @return ResponseEntity containing filtered log file or appropriate status code
-     * @throws IOException if there's an error reading the log file
      */
     @Operation(summary = "Получить лог-файл за указанную дату",
             description = "Возвращает лог-файл, отфильтрованный по дате")
@@ -57,36 +56,43 @@ public class LogController {
     @GetMapping(value = "/download", produces = MediaType.TEXT_PLAIN_VALUE)
     public ResponseEntity<FileSystemResource> getLogFileByDate(
             @Parameter(description = "Дата в формате yyyy-MM-dd")
-            @RequestParam String date) throws IOException {
+            @RequestParam String date) {
 
-        LocalDate logDate = LocalDate.parse(date, DateTimeFormatter.ISO_DATE);
-        String dateString = logDate.format(DateTimeFormatter.ISO_DATE);
-
-        Path logFilePath = Paths.get(LOG_FILE_PATH);
-        if (!Files.exists(logFilePath)) {
-            return ResponseEntity.notFound().build();
-        }
-
-        List<String> filteredLines = Files.lines(logFilePath)
-                .filter(line -> line.contains(dateString))
-                .collect(Collectors.toList());
-
-        if (filteredLines.isEmpty()) {
-            return ResponseEntity.noContent().build();
-        }
-
-       
-        Path tempFile = Files.createTempFile("logs-" + dateString, ".log");
         try {
-            Files.write(tempFile, filteredLines, StandardOpenOption.CREATE);
-            Files.setPosixFilePermissions(tempFile, TEMP_FILE_PERMISSIONS);
-        } catch (UnsupportedOperationException e) {
-            logger.warn("POSIX file permissions not supported on this system");
-        }
-        tempFile.toFile().deleteOnExit();
+            LocalDate logDate = LocalDate.parse(date, DateTimeFormatter.ISO_DATE);
+            String dateString = logDate.format(DateTimeFormatter.ISO_DATE);
 
-        return ResponseEntity.ok()
-                .header("Content-Disposition", "attachment; filename=logs-" + dateString + ".log")
-                .body(new FileSystemResource(tempFile));
+            Path logFilePath = Paths.get(LOG_FILE_PATH);
+            if (!Files.exists(logFilePath)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            List<String> filteredLines = Files.lines(logFilePath)
+                    .filter(line -> line.contains(dateString))
+                    .collect(Collectors.toList());
+
+            if (filteredLines.isEmpty()) {
+                return ResponseEntity.noContent().build();
+            }
+
+            // Создаем временный файл с безопасными правами доступа
+            Path tempFile = Files.createTempFile("logs-" + dateString, ".log");
+            try {
+                Files.write(tempFile, filteredLines, StandardOpenOption.CREATE);
+                Files.setPosixFilePermissions(tempFile, TEMP_FILE_PERMISSIONS);
+            } catch (UnsupportedOperationException e) {
+                logger.warn("POSIX file permissions not supported on this system");
+            }
+
+            tempFile.toFile().deleteOnExit();
+
+            return ResponseEntity.ok()
+                    .header("Content-Disposition", "attachment; filename=logs-"
+                            + dateString + ".log")
+                    .body(new FileSystemResource(tempFile));
+        } catch (IOException e) {
+            logger.error("Error processing log file request", e);
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }
