@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
@@ -68,6 +69,11 @@ public class LogService {
             task.setFilePath(tempFile.toString());
             return taskRepository.save(task);
 
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("Task processing interrupted: {}", task.getId(), e);
+            task.setStatus(LogTaskStatus.FAILED);
+            return taskRepository.save(task);
         } catch (Exception e) {
             log.error("Task processing failed: {}", task.getId(), e);
             task.setStatus(LogTaskStatus.FAILED);
@@ -98,13 +104,46 @@ public class LogService {
      * @throws IOException если возникла ошибка создания файла
      */
     private Path createTempFile(String date, List<String> content) throws IOException {
-        Path tempFile = Files.createTempFile(
-                "logs-" + date + "-",
-                ".log"
-        );
-        Files.write(tempFile, content, StandardOpenOption.TRUNCATE_EXISTING);
-        tempFile.toFile().deleteOnExit();
-        return tempFile;
+        // Создаем файл в системном временном каталоге
+        Path tempDir = Paths.get(System.getProperty("java.io.tmpdir"));
+        if (!Files.isWritable(tempDir)) {
+            throw new SecurityException("Temporary directory is not writable: " + tempDir);
+        }
+
+        Path tempFile = Files.createTempFile(tempDir, "logs-" + date + "-", ".log");
+
+        try {
+            // Устанавливаем ограниченные права доступа (кросс-платформенный способ)
+            try {
+                Files.setPosixFilePermissions(tempFile,
+                        java.util.Set.of(
+                                PosixFilePermission.OWNER_READ,
+                                PosixFilePermission.OWNER_WRITE
+                        ));
+            } catch (UnsupportedOperationException e) {
+                // Если система не поддерживает POSIX-права
+                if (!tempFile.toFile().setReadable(false, false)
+                        || !tempFile.toFile().setWritable(false, false)
+                        || !tempFile.toFile().setReadable(true)
+                        || !tempFile.toFile().setWritable(true)) {
+                    log.warn("Failed to set file permissions on: {}", tempFile);
+                }
+            }
+
+            Files.write(tempFile, content,
+                    StandardOpenOption.WRITE,
+                    StandardOpenOption.TRUNCATE_EXISTING);
+
+            tempFile.toFile().deleteOnExit();
+            return tempFile;
+        } catch (IOException e) {
+            try {
+                Files.deleteIfExists(tempFile);
+            } catch (IOException deleteEx) {
+                log.warn("Failed to delete temporary file: {}", tempFile, deleteEx);
+            }
+            throw e;
+        }
     }
 
     /**
