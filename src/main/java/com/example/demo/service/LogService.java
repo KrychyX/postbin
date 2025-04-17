@@ -30,6 +30,14 @@ public class LogService {
     private final AtomicLong idCounter = new AtomicLong(1);
     private final LogService selfProxy;
 
+    /**
+     * Конструктор сервиса для обработки задач работы с логами.
+     *
+     * @param taskRepository репозиторий для работы с задачами обработки логов
+     * @param selfProxy лениво инициализируемый прокси текущего сервиса,
+     *                 необходим для корректной работы транзакционных методов
+     *                 при внутренних вызовах
+     */
     @org.springframework.beans.factory.annotation.Autowired
     public LogService(LogTaskRepository taskRepository, @Lazy LogService selfProxy) {
         this.taskRepository = taskRepository;
