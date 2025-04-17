@@ -1,143 +1,84 @@
 package com.example.demo.controller;
 
+import com.example.demo.model.LogTask;
+import com.example.demo.service.LogService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.PosixFilePermission;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Set;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.http.MediaType;
+import java.util.concurrent.CompletableFuture;
+import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Controller for handling log file operations.
- *
- * <p>Provides endpoints for retrieving and downloading application log files filtered by date.
+ * Контроллер для обработки операций с логами.
  */
+@Tag(name = "Log API")
 @RestController
 @RequestMapping("/api/logs")
-@Tag(name = "Log Controller", description = "API для работы с логами")
+@RequiredArgsConstructor
 public class LogController {
-
-    private static final Logger logger = LoggerFactory.getLogger(LogController.class);
-    private static final String LOG_FILE_PATH = "application.log";
-    private static final Set<PosixFilePermission> TEMP_FILE_PERMISSIONS =
-            EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
-    private static final String LOG_FILE_PREFIX = "logs-";
-    private static final String LOG_FILE_SUFFIX = ".log";
+    private final LogService logService;
 
     /**
-     * Получает лог файл.
+     * Запускает асинхронную обработку файла логов.
+     *
+     * @param date Дата в формате yyyy-MM-dd
+     * @return CompletableFuture с ResponseEntity, содержащим ID задачи
+     * @throws InterruptedException если выполнение задачи было прервано
      */
-    @Operation(summary = "Получить лог-файл за указанную дату",
-            description = "Возвращает лог-файл, отфильтрованный по дате")
-    @ApiResponse(responseCode = "200", description = "Лог-файл успешно получен")
-    @GetMapping(value = "/download", produces = MediaType.TEXT_PLAIN_VALUE)
-    public ResponseEntity<FileSystemResource> getLogFileByDate(
-            @Parameter(description = "Дата в формате yyyy-MM-dd")
-            @RequestParam String date) {
-
-        if (date == null || date.isEmpty()) {
-            logger.warn("Empty date parameter received");
-            return ResponseEntity.badRequest().build();
-        }
-
-        try {
-            LocalDate logDate = LocalDate.parse(date, DateTimeFormatter.ISO_DATE);
-            String dateString = logDate.format(DateTimeFormatter.ISO_DATE);
-
-            Path logFilePath = Paths.get(LOG_FILE_PATH).normalize().toAbsolutePath();
-            if (!Files.exists(logFilePath)) {
-                logger.warn("Log file not found");
-                return ResponseEntity.notFound().build();
-            }
-
-            List<String> filteredLines = Files.lines(logFilePath)
-                    .filter(line -> line.contains(dateString))
-                    .toList();
-
-            if (filteredLines.isEmpty()) {
-                logger.info("No logs found for the specified date");
-                return ResponseEntity.noContent().build();
-            }
-
-            Path tempFile = createTempLogFile(dateString, filteredLines);
-            String contentDisposition = "attachment; filename="
-                    + LOG_FILE_PREFIX + dateString + LOG_FILE_SUFFIX;
-
-            return ResponseEntity.ok()
-                    .header("Content-Disposition", contentDisposition)
-                    .body(new FileSystemResource(tempFile));
-        } catch (Exception e) {
-            logger.error("Error processing log file request for date: {}", date, e);
-            return ResponseEntity.internalServerError().build();
-        }
+    @Operation(summary = "Create log task", description = "Starts async log file processing")
+    @ApiResponse(responseCode = "202", description = "Task accepted")
+    @PostMapping
+    public CompletableFuture<ResponseEntity<String>> createLogTask(
+            @Parameter(description = "Date in yyyy-MM-dd format")
+            @RequestParam String date) throws InterruptedException {
+        return logService.createLogTask(date)
+                .thenApply(task -> ResponseEntity.accepted().body(task.getId()));
     }
 
-    private Path createTempLogFile(String dateString, List<String> content) throws IOException {
-        Path tempDir = Paths.get(System.getProperty("java.io.tmpdir"));
-        Path tempFile = Files.createTempFile(tempDir,
-                LOG_FILE_PREFIX + dateString + "_",
-                LOG_FILE_SUFFIX);
-
-        try {
-            writeContentToFile(tempFile, content);
-            setSecureFilePermissions(tempFile);
-            tempFile.toFile().deleteOnExit();
-            return tempFile;
-        } catch (IOException e) {
-            handleTempFileError(tempFile, e);
-            throw new IOException("Failed to create temporary log file for date: " + dateString, e);
-        }
+    /**
+     * Возвращает статус задачи обработки логов.
+     *
+     * @param taskId ID задачи для проверки
+     * @return ResponseEntity с объектом LogTask, содержащим статус
+     */
+    @Operation(summary = "Get task status")
+    @GetMapping("/{taskId}/status")
+    public ResponseEntity<LogTask> getTaskStatus(
+            @Parameter(description = "Task ID")
+            @PathVariable String taskId) {
+        return ResponseEntity.ok(logService.getTaskStatus(taskId));
     }
 
+    /**
+     * Скачивает обработанный файл логов.
+     *
+     * @param taskId ID задачи для скачивания
+     * @return ResponseEntity с файлом логов в виде Resource
+     * @throws Exception если возникла ошибка при доступе к файлу
+     */
+    @Operation(summary = "Download log file")
+    @GetMapping("/{taskId}/download")
+    public ResponseEntity<Resource> downloadLogFile(
+            @Parameter(description = "Task ID")
+            @PathVariable String taskId) throws Exception {
+        Path filePath = logService.getLogFilePath(taskId);
+        Resource resource = new UrlResource(filePath.toUri());
 
-    private void writeContentToFile(Path file, List<String> content) throws IOException {
-        try {
-            Files.write(file, content,
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.TRUNCATE_EXISTING);
-        } catch (IOException e) {
-            String errorMsg =
-                    String.format("Failed to write content to temporary file: %s. Reason: %s",
-                    file.toAbsolutePath(), e.getMessage());
-            logger.error(errorMsg);
-            throw new IOException(errorMsg, e);
-        }
-    }
-
-    private void setSecureFilePermissions(Path file) {
-        try {
-            Files.setPosixFilePermissions(file, TEMP_FILE_PERMISSIONS);
-        } catch (UnsupportedOperationException e) {
-            logger.debug("POSIX file permissions not supported on this system");
-        } catch (IOException e) {
-            logger.warn("Failed to set permissions for file: {}", file, e);
-        }
-    }
-
-    private void handleTempFileError(Path tempFile, IOException e) {
-        logger.error("Error processing temporary file: {}", tempFile, e);
-        try {
-            Files.deleteIfExists(tempFile);
-        } catch (IOException ex) {
-            logger.error("Failed to cleanup temporary file: {}", tempFile, ex);
-        }
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + filePath.getFileName() + "\"")
+                .body(resource);
     }
 }

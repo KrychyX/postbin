@@ -167,6 +167,8 @@ public class ArticleController {
      * @return список DTO статей
      */
     @Operation(summary = "Поиск статей по имени автора",
+
+
             description = "Возвращает список статей по имени автора")
     @ApiResponse(responseCode = "200", description = "Список статей успешно получен")
     @GetMapping("/author")
