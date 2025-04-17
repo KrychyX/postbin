@@ -13,9 +13,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -26,15 +24,17 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class LogService {
     private static final String LOG_FILE_PATH = "application.log";
     private final LogTaskRepository taskRepository;
     private final AtomicLong idCounter = new AtomicLong(1);
+    private final LogService selfProxy;
 
-    @Lazy
-    @Autowired
-    private LogService selfProxy;
+    @org.springframework.beans.factory.annotation.Autowired
+    public LogService(LogTaskRepository taskRepository, @Lazy LogService selfProxy) {
+        this.taskRepository = taskRepository;
+        this.selfProxy = selfProxy;
+    }
 
     /**
      * Создает новую задачу для обработки логов за указанную дату.
