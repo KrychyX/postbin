@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Контроллер для обработки операций с логами.
@@ -35,14 +37,13 @@ public class LogController {
      *
      * @param date Дата в формате yyyy-MM-dd
      * @return CompletableFuture с ResponseEntity, содержащим ID задачи
-     * @throws InterruptedException если выполнение задачи было прервано
      */
     @Operation(summary = "Create log task", description = "Starts async log file processing")
     @ApiResponse(responseCode = "202", description = "Task accepted")
     @PostMapping
     public CompletableFuture<ResponseEntity<String>> createLogTask(
             @Parameter(description = "Date in yyyy-MM-dd format")
-            @RequestParam String date) throws InterruptedException {
+            @RequestParam String date) {
         return logService.createLogTask(date)
                 .thenApply(task -> ResponseEntity.accepted().body(task.getId()));
     }
@@ -66,19 +67,33 @@ public class LogController {
      *
      * @param taskId ID задачи для скачивания
      * @return ResponseEntity с файлом логов в виде Resource
-     * @throws Exception если возникла ошибка при доступе к файлу
      */
     @Operation(summary = "Download log file")
     @GetMapping("/{taskId}/download")
     public ResponseEntity<Resource> downloadLogFile(
             @Parameter(description = "Task ID")
-            @PathVariable String taskId) throws Exception {
-        Path filePath = logService.getLogFilePath(taskId);
-        Resource resource = new UrlResource(filePath.toUri());
+            @PathVariable String taskId) {
+        try {
+            Path filePath = logService.getLogFilePath(taskId);
+            Resource resource = new UrlResource(filePath.toUri());
 
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + filePath.getFileName() + "\"")
-                .body(resource);
+            if (!resource.exists() || !resource.isReadable()) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "File not found or not readable");
+            }
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"" + filePath.getFileName() + "\"")
+                    .body(resource);
+
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found", e);
+        } catch (IllegalStateException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Log file not ready yet", e);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to download file", e);
+        }
     }
 }

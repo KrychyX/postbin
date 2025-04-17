@@ -10,10 +10,13 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +31,10 @@ public class LogService {
     private static final String LOG_FILE_PATH = "application.log";
     private final LogTaskRepository taskRepository;
     private final AtomicLong idCounter = new AtomicLong(1);
+
+    @Lazy
+    @Autowired
+    private LogService selfProxy;
 
     /**
      * Создает новую задачу для обработки логов за указанную дату.
@@ -104,45 +111,59 @@ public class LogService {
      * @throws IOException если возникла ошибка создания файла
      */
     private Path createTempFile(String date, List<String> content) throws IOException {
-        // Создаем файл в системном временном каталоге
         Path tempDir = Paths.get(System.getProperty("java.io.tmpdir"));
         if (!Files.isWritable(tempDir)) {
             throw new SecurityException("Temporary directory is not writable: " + tempDir);
         }
 
         Path tempFile = Files.createTempFile(tempDir, "logs-" + date + "-", ".log");
-
         try {
-            // Устанавливаем ограниченные права доступа (кросс-платформенный способ)
-            try {
-                Files.setPosixFilePermissions(tempFile,
-                        java.util.Set.of(
-                                PosixFilePermission.OWNER_READ,
-                                PosixFilePermission.OWNER_WRITE
-                        ));
-            } catch (UnsupportedOperationException e) {
-                // Если система не поддерживает POSIX-права
-                if (!tempFile.toFile().setReadable(false, false)
-                        || !tempFile.toFile().setWritable(false, false)
-                        || !tempFile.toFile().setReadable(true)
-                        || !tempFile.toFile().setWritable(true)) {
-                    log.warn("Failed to set file permissions on: {}", tempFile);
-                }
-            }
-
-            Files.write(tempFile, content,
-                    StandardOpenOption.WRITE,
-                    StandardOpenOption.TRUNCATE_EXISTING);
-
+            setFilePermissions(tempFile);
+            writeFileContent(tempFile, content);
             tempFile.toFile().deleteOnExit();
             return tempFile;
         } catch (IOException e) {
-            try {
-                Files.deleteIfExists(tempFile);
-            } catch (IOException deleteEx) {
-                log.warn("Failed to delete temporary file: {}", tempFile, deleteEx);
-            }
+            cleanupTempFile(tempFile);
             throw e;
+        }
+    }
+
+    /**
+     * Устанавливает права доступа для файла.
+     */
+    private void setFilePermissions(Path file) throws IOException {
+        try {
+            Files.setPosixFilePermissions(file, Set.of(
+                    PosixFilePermission.OWNER_READ,
+                    PosixFilePermission.OWNER_WRITE
+            ));
+        } catch (UnsupportedOperationException e) {
+            if (!file.toFile().setReadable(false, false)
+                    || !file.toFile().setWritable(false, false)
+                    || !file.toFile().setReadable(true)
+                    || !file.toFile().setWritable(true)) {
+                log.warn("Failed to set file permissions on: {}", file);
+            }
+        }
+    }
+
+    /**
+     * Записывает содержимое в файл.
+     */
+    private void writeFileContent(Path file, List<String> content) throws IOException {
+        Files.write(file, content,
+                StandardOpenOption.WRITE,
+                StandardOpenOption.TRUNCATE_EXISTING);
+    }
+
+    /**
+     * Удаляет временный файл в случае ошибки.
+     */
+    private void cleanupTempFile(Path file) {
+        try {
+            Files.deleteIfExists(file);
+        } catch (IOException e) {
+            log.warn("Failed to delete temporary file: {}", file, e);
         }
     }
 
@@ -171,7 +192,7 @@ public class LogService {
      */
     @Transactional(readOnly = true)
     public Path getLogFilePath(String taskId) {
-        LogTask task = getTaskStatus(taskId);
+        LogTask task = selfProxy.getTaskStatus(taskId);
         if (task.getStatus() != LogTaskStatus.COMPLETED) {
             throw new IllegalStateException("Log file not ready yet");
         }
