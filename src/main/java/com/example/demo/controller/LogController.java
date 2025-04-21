@@ -7,7 +7,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.nio.file.Path;
-import java.util.concurrent.CompletableFuture;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -41,11 +40,11 @@ public class LogController {
     @Operation(summary = "Create log task", description = "Starts async log file processing")
     @ApiResponse(responseCode = "202", description = "Task accepted")
     @PostMapping
-    public CompletableFuture<ResponseEntity<String>> createLogTask(
+    public ResponseEntity<String> createLogTask(
             @Parameter(description = "Date in yyyy-MM-dd format")
             @RequestParam String date) {
-        return logService.createLogTask(date)
-                .thenApply(task -> ResponseEntity.accepted().body(task.getId()));
+        LogTask task = logService.createLogTask(date).join(); // Блокируем до получения ID
+        return ResponseEntity.accepted().body(task.getId());
     }
 
     /**

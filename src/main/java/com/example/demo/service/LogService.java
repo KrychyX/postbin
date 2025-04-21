@@ -57,8 +57,12 @@ public class LogService {
                 String.valueOf(idCounter.getAndIncrement()),
                 date
         );
+
         taskRepository.save(task);
-        return CompletableFuture.supplyAsync(() -> processTask(task));
+
+        CompletableFuture.runAsync(() -> processTask(task));
+
+        return CompletableFuture.completedFuture(task);
     }
 
     /**
@@ -71,7 +75,7 @@ public class LogService {
         try {
             task.setStatus(LogTaskStatus.PROCESSING);
             taskRepository.save(task);
-            Thread.sleep(5000);
+            Thread.sleep(20000);
             Path logFile = Paths.get(LOG_FILE_PATH);
             if (!Files.exists(logFile)) {
                 throw new IOException("Log file not found");
