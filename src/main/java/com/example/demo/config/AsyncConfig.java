@@ -1,15 +1,21 @@
 package com.example.demo.config;
 
+import java.util.concurrent.Executor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import java.util.concurrent.Executor;
 
+/**
+ * Configuration class for asynchronous task execution in the application.
+ */
 @Configuration
 @EnableAsync
 public class AsyncConfig {
 
+    /**
+     * Creates and configures a dedicated thread pool executor for log processing tasks.
+     */
     @Bean(name = "logTaskExecutor")
     public Executor logTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();

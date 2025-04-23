@@ -14,6 +14,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -55,8 +56,38 @@ public class LogService {
         String taskId = String.valueOf(idCounter.getAndIncrement());
         LogTask task = new LogTask(taskId, date, LogTaskStatus.PROCESSING);
         taskRepository.save(task);
-        processTaskAsync(task);
+
+        CompletableFuture.runAsync(() -> processTask(task));
+
         return taskId;
+    }
+
+    /**
+     * Asynchronously processes the task of filtering and saving logs for the specified date.
+     *
+     */
+    @Async("logTaskExecutor")
+    public void processTask(LogTask task) {
+        try {
+            Thread.sleep(20000);
+
+            Path logFile = Paths.get(LOG_FILE_PATH);
+            List<String> filteredLines = Files.lines(logFile)
+                    .filter(line -> line.contains(task.getDate()))
+                    .toList();
+
+            Path tempFile = createTempFile(task.getDate(), filteredLines);
+
+            task.setStatus(LogTaskStatus.COMPLETED);
+            task.setFilePath(tempFile.toString());
+            taskRepository.save(task);
+
+        } catch (Exception e) {
+            task.setStatus(LogTaskStatus.FAILED);
+            task.setErrorMessage(e.getMessage());
+            taskRepository.save(task);
+            log.error("Task failed: {}", task.getId(), e);
+        }
     }
 
     /**
@@ -85,65 +116,12 @@ public class LogService {
     public Path getLogFilePath(String taskId) {
         LogTask task = getTaskStatus(taskId);
         if (task.getStatus() != LogTaskStatus.COMPLETED) {
-            throw new IllegalStateException("Log file not ready yet");
+            throw new IllegalStateException("Log file not ready yet"); // Это вызовет 425
         }
         if (task.getFilePath() == null) {
             throw new ResourceNotFoundException("Log file path not found");
         }
         return Paths.get(task.getFilePath());
-    }
-
-    @Async("logTaskExecutor")
-    protected void processTaskAsync(LogTask task) {
-        try {
-            updateTaskStatus(task, LogTaskStatus.PROCESSING);
-
-            // Simulate long processing
-            Thread.sleep(20000);
-
-            Path logFile = Paths.get(LOG_FILE_PATH);
-            if (!Files.exists(logFile)) {
-                throw new IOException("Log file not found at: " + LOG_FILE_PATH);
-            }
-
-            List<String> filteredLines = filterLinesByDate(logFile, task.getDate());
-            if (filteredLines.isEmpty()) {
-                throw new ResourceNotFoundException("No logs found for date: " + task.getDate());
-            }
-
-            Path tempFile = createTempFile(task.getDate(), filteredLines);
-
-            task.setStatus(LogTaskStatus.COMPLETED);
-            task.setFilePath(tempFile.toString());
-            taskRepository.save(task);
-
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            updateTaskStatus(task, LogTaskStatus.FAILED, "Processing interrupted");
-        } catch (Exception e) {
-            updateTaskStatus(task, LogTaskStatus.FAILED, e.getMessage());
-        }
-    }
-
-    private void updateTaskStatus(LogTask task, LogTaskStatus status) {
-        updateTaskStatus(task, status, null);
-    }
-
-    private void updateTaskStatus(LogTask task, LogTaskStatus status, String errorMessage) {
-        task.setStatus(status);
-        if (errorMessage != null) {
-            task.setErrorMessage(errorMessage);
-        }
-        taskRepository.save(task);
-    }
-
-    private List<String> filterLinesByDate(Path logFile, String date) throws IOException {
-        LocalDate logDate = LocalDate.parse(date, DATE_FORMATTER);
-        String formattedDate = logDate.format(DATE_FORMATTER);
-
-        return Files.lines(logFile)
-                .filter(line -> line.contains(formattedDate))
-                .toList();
     }
 
     private Path createTempFile(String date, List<String> content) throws IOException {
