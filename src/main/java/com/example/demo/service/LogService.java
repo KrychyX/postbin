@@ -152,7 +152,7 @@ public class LogService {
      */
     @Transactional(readOnly = true)
     public Path getLogFilePath(String taskId) {
-        LogTask task = getTaskStatus(taskId);
+        LogTask task = selfProxy.getTaskStatus(taskId);
         if (task.getStatus() != LogTaskStatus.COMPLETED) {
             throw new IllegalStateException("Log file not ready yet"); // Это вызовет 425
         }

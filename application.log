@@ -4667,3 +4667,49 @@ Relying upon circular references is discouraged and they are prohibited by defau
 2025-04-23T20:22:29.399+03:00  INFO 10384 --- [SpringApplicationShutdownHook] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
 2025-04-23T20:22:29.400+03:00  INFO 10384 --- [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
 2025-04-23T20:22:29.402+03:00  INFO 10384 --- [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+2025-04-23T20:27:31.803+03:00  INFO 10516 --- [main] com.example.demo.Application             : Starting Application using Java 17.0.14 with PID 10516 (D:\java\postbin\target\classes started by Krykk in D:\java\postbin)
+2025-04-23T20:27:31.805+03:00 DEBUG 10516 --- [main] com.example.demo.Application             : Running with Spring Boot v3.4.3, Spring v6.2.3
+2025-04-23T20:27:31.806+03:00  INFO 10516 --- [main] com.example.demo.Application             : No active profile set, falling back to 1 default profile: "default"
+2025-04-23T20:27:32.287+03:00  INFO 10516 --- [main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-04-23T20:27:32.324+03:00  INFO 10516 --- [main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 30 ms. Found 2 JPA repository interfaces.
+2025-04-23T20:27:32.776+03:00  INFO 10516 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2025-04-23T20:27:32.784+03:00  INFO 10516 --- [main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-04-23T20:27:32.785+03:00  INFO 10516 --- [main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.36]
+2025-04-23T20:27:32.829+03:00  INFO 10516 --- [main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-04-23T20:27:32.829+03:00  INFO 10516 --- [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 997 ms
+2025-04-23T20:27:32.940+03:00  INFO 10516 --- [main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-04-23T20:27:32.975+03:00  INFO 10516 --- [main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.8.Final
+2025-04-23T20:27:32.997+03:00  INFO 10516 --- [main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2025-04-23T20:27:33.157+03:00  INFO 10516 --- [main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-04-23T20:27:33.175+03:00  INFO 10516 --- [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2025-04-23T20:27:33.286+03:00  INFO 10516 --- [main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@5b0e9e0c
+2025-04-23T20:27:33.287+03:00  INFO 10516 --- [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2025-04-23T20:27:33.331+03:00  INFO 10516 --- [main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 17.4
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2025-04-23T20:27:33.931+03:00  INFO 10516 --- [main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-04-23T20:27:34.093+03:00  INFO 10516 --- [main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-04-23T20:27:34.340+03:00  INFO 10516 --- [main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2025-04-23T20:27:34.570+03:00  WARN 10516 --- [main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-04-23T20:27:35.056+03:00  INFO 10516 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
+2025-04-23T20:27:35.063+03:00  INFO 10516 --- [main] com.example.demo.Application             : Started Application in 3.551 seconds (process running for 3.926)
+2025-04-23T20:27:38.743+03:00  INFO 10516 --- [http-nio-8080-exec-2] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-04-23T20:27:38.744+03:00  INFO 10516 --- [http-nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2025-04-23T20:27:38.745+03:00  INFO 10516 --- [http-nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2025-04-23T20:27:38.770+03:00  INFO 10516 --- [http-nio-8080-exec-2] com.example.demo.utils.LoggingAspect     : Method called: LogController.createLogTask(..)
+2025-04-23T20:27:44.370+03:00  INFO 10516 --- [http-nio-8080-exec-3] com.example.demo.utils.LoggingAspect     : Method called: LogController.getTaskStatus(..)
+2025-04-23T20:27:49.610+03:00  INFO 10516 --- [http-nio-8080-exec-4] com.example.demo.utils.LoggingAspect     : Method called: LogController.downloadLogFile(..)
+2025-04-23T20:27:52.899+03:00  INFO 10516 --- [http-nio-8080-exec-6] com.example.demo.utils.LoggingAspect     : Method called: LogController.getTaskStatus(..)
+2025-04-23T20:27:56.869+03:00  INFO 10516 --- [http-nio-8080-exec-5] com.example.demo.utils.LoggingAspect     : Method called: LogController.downloadLogFile(..)
+2025-04-23T20:27:59.345+03:00  INFO 10516 --- [http-nio-8080-exec-7] com.example.demo.utils.LoggingAspect     : Method called: LogController.getTaskStatus(..)
+2025-04-23T20:28:01.979+03:00  INFO 10516 --- [http-nio-8080-exec-8] com.example.demo.utils.LoggingAspect     : Method called: LogController.downloadLogFile(..)
+2025-04-23T20:28:08.996+03:00  INFO 10516 --- [SpringApplicationShutdownHook] o.s.b.w.e.tomcat.GracefulShutdown        : Commencing graceful shutdown. Waiting for active requests to complete
+2025-04-23T20:28:09.030+03:00  INFO 10516 --- [tomcat-shutdown] o.s.b.w.e.tomcat.GracefulShutdown        : Graceful shutdown complete
+2025-04-23T20:28:09.033+03:00  INFO 10516 --- [SpringApplicationShutdownHook] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2025-04-23T20:28:09.034+03:00  INFO 10516 --- [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2025-04-23T20:28:09.035+03:00  INFO 10516 --- [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.

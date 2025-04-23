@@ -76,7 +76,7 @@ public class LogController {
     @ApiResponse(responseCode = "404", description = "Task or file not found")
     @ApiResponse(responseCode = "425", description = "File not ready yet")
     @GetMapping("/{taskId}/download")
-    public ResponseEntity<?> downloadLogFile(@PathVariable String taskId) {
+    public ResponseEntity<Object> downloadLogFile(@PathVariable String taskId) {
         try {
             LogTask task = logService.getTaskStatus(taskId);
 
