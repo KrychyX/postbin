@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.model.LogTask;
 import com.example.demo.model.LogTaskStatus;
 import com.example.demo.repository.LogTaskRepository;
@@ -9,140 +10,158 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.PosixFilePermission;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Сервис для обработки задач работы с логами.
+ * Service for processing log files asynchronously.
  */
 @Slf4j
 @Service
 public class LogService {
     private static final String LOG_FILE_PATH = "application.log";
+    private static final DateTimeFormatter DATE_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
     private final LogTaskRepository taskRepository;
     private final AtomicLong idCounter = new AtomicLong(1);
-    private final LogService selfProxy;
 
     /**
-     * Конструктор сервиса для обработки задач работы с логами.
+     * Constructs a LogService with required dependencies.
      *
-     * @param taskRepository репозиторий для работы с задачами обработки логов
-     * @param selfProxy лениво инициализируемый прокси текущего сервиса,
-     *                 необходим для корректной работы транзакционных методов
-     *                 при внутренних вызовах
+     * @param taskRepository repository for log tasks
      */
-    @org.springframework.beans.factory.annotation.Autowired
-    public LogService(LogTaskRepository taskRepository, @Lazy LogService selfProxy) {
+    public LogService(LogTaskRepository taskRepository) {
         this.taskRepository = taskRepository;
-        this.selfProxy = selfProxy;
     }
 
     /**
-     * Создает новую задачу для обработки логов за указанную дату.
+     * Creates a new log processing task.
      *
-     * @param date Дата в формате yyyy-MM-dd для фильтрации логов
-     * @return CompletableFuture с созданной задачей
+     * @param date the date to filter logs in format yyyy-MM-dd
+     * @return the created task ID
+     * @throws IllegalArgumentException if date format is invalid
      */
-    @Async
     @Transactional
-    public CompletableFuture<LogTask> createLogTask(String date) {
-        LogTask task = new LogTask(
-                String.valueOf(idCounter.getAndIncrement()),
-                date
-        );
-
+    public String createLogTask(String date) {
+        validateDate(date);
+        String taskId = String.valueOf(idCounter.getAndIncrement());
+        LogTask task = new LogTask(taskId, date, LogTaskStatus.PROCESSING);
         taskRepository.save(task);
-
-        CompletableFuture.runAsync(() -> processTask(task));
-
-        return CompletableFuture.completedFuture(task);
+        processTaskAsync(task);
+        return taskId;
     }
 
     /**
-     * Обрабатывает задачу: фильтрует логи по дате и сохраняет результат.
+     * Gets the status of a task.
      *
-     * @param task Задача для обработки
-     * @return Обработанная задача с обновленным статусом
+     * @param taskId the ID of the task to check
+     * @return the log task with current status
+     * @throws ResourceNotFoundException if task not found
      */
-    private LogTask processTask(LogTask task) {
+    @Transactional(readOnly = true)
+    public LogTask getTaskStatus(String taskId) {
+        return taskRepository.findById(taskId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Task not found with id: " + taskId));
+    }
+
+    /**
+     * Gets the path to processed log file.
+     *
+     * @param taskId the ID of completed task
+     * @return path to the log file
+     * @throws IllegalStateException if file not ready
+     * @throws ResourceNotFoundException if file path not found
+     */
+    @Transactional(readOnly = true)
+    public Path getLogFilePath(String taskId) {
+        LogTask task = getTaskStatus(taskId);
+        if (task.getStatus() != LogTaskStatus.COMPLETED) {
+            throw new IllegalStateException("Log file not ready yet");
+        }
+        if (task.getFilePath() == null) {
+            throw new ResourceNotFoundException("Log file path not found");
+        }
+        return Paths.get(task.getFilePath());
+    }
+
+    @Async("logTaskExecutor")
+    protected void processTaskAsync(LogTask task) {
         try {
-            task.setStatus(LogTaskStatus.PROCESSING);
-            taskRepository.save(task);
+            updateTaskStatus(task, LogTaskStatus.PROCESSING);
+
+            // Simulate long processing
             Thread.sleep(20000);
+
             Path logFile = Paths.get(LOG_FILE_PATH);
             if (!Files.exists(logFile)) {
-                throw new IOException("Log file not found");
+                throw new IOException("Log file not found at: " + LOG_FILE_PATH);
             }
 
             List<String> filteredLines = filterLinesByDate(logFile, task.getDate());
+            if (filteredLines.isEmpty()) {
+                throw new ResourceNotFoundException("No logs found for date: " + task.getDate());
+            }
+
             Path tempFile = createTempFile(task.getDate(), filteredLines);
 
             task.setStatus(LogTaskStatus.COMPLETED);
             task.setFilePath(tempFile.toString());
-            return taskRepository.save(task);
+            taskRepository.save(task);
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.error("Task processing interrupted: {}", task.getId(), e);
-            task.setStatus(LogTaskStatus.FAILED);
-            return taskRepository.save(task);
+            updateTaskStatus(task, LogTaskStatus.FAILED, "Processing interrupted");
         } catch (Exception e) {
-            log.error("Task processing failed: {}", task.getId(), e);
-            task.setStatus(LogTaskStatus.FAILED);
-            return taskRepository.save(task);
+            updateTaskStatus(task, LogTaskStatus.FAILED, e.getMessage());
         }
     }
 
-    /**
-     * Фильтрует строки лога, оставляя только записи за указанную дату.
-     *
-     * @param logFile Путь к файлу с логами
-     * @param date Дата для фильтрации
-     * @return Список отфильтрованных строк
-     * @throws IOException если возникла ошибка чтения файла
-     */
+    private void updateTaskStatus(LogTask task, LogTaskStatus status) {
+        updateTaskStatus(task, status, null);
+    }
+
+    private void updateTaskStatus(LogTask task, LogTaskStatus status, String errorMessage) {
+        task.setStatus(status);
+        if (errorMessage != null) {
+            task.setErrorMessage(errorMessage);
+        }
+        taskRepository.save(task);
+    }
+
     private List<String> filterLinesByDate(Path logFile, String date) throws IOException {
+        LocalDate logDate = LocalDate.parse(date, DATE_FORMATTER);
+        String formattedDate = logDate.format(DATE_FORMATTER);
+
         return Files.lines(logFile)
-                .filter(line -> line.contains(date))
+                .filter(line -> line.contains(formattedDate))
                 .toList();
     }
 
-    /**
-     * Создает временный файл с отфильтрованными логами.
-     *
-     * @param date Дата для включения в имя файла
-     * @param content Содержимое файла
-     * @return Путь к созданному временному файлу
-     * @throws IOException если возникла ошибка создания файла
-     */
     private Path createTempFile(String date, List<String> content) throws IOException {
         Path tempDir = Paths.get(System.getProperty("java.io.tmpdir"));
-        if (!Files.isWritable(tempDir)) {
-            throw new SecurityException("Temporary directory is not writable: " + tempDir);
-        }
-
         Path tempFile = Files.createTempFile(tempDir, "logs-" + date + "-", ".log");
+
         try {
             setFilePermissions(tempFile);
-            writeFileContent(tempFile, content);
+            Files.write(tempFile, content, StandardOpenOption.WRITE,
+                    StandardOpenOption.TRUNCATE_EXISTING);
             tempFile.toFile().deleteOnExit();
             return tempFile;
         } catch (IOException e) {
-            cleanupTempFile(tempFile);
+            Files.deleteIfExists(tempFile);
             throw e;
         }
     }
 
-    /**
-     * Устанавливает права доступа для файла.
-     */
     private void setFilePermissions(Path file) throws IOException {
         try {
             Files.setPosixFilePermissions(file, Set.of(
@@ -150,64 +169,17 @@ public class LogService {
                     PosixFilePermission.OWNER_WRITE
             ));
         } catch (UnsupportedOperationException e) {
-            if (!file.toFile().setReadable(false, false)
-                    || !file.toFile().setWritable(false, false)
-                    || !file.toFile().setReadable(true)
-                    || !file.toFile().setWritable(true)) {
+            if (!file.toFile().setReadable(true) || !file.toFile().setWritable(true)) {
                 log.warn("Failed to set file permissions on: {}", file);
             }
         }
     }
 
-    /**
-     * Записывает содержимое в файл.
-     */
-    private void writeFileContent(Path file, List<String> content) throws IOException {
-        Files.write(file, content,
-                StandardOpenOption.WRITE,
-                StandardOpenOption.TRUNCATE_EXISTING);
-    }
-
-    /**
-     * Удаляет временный файл в случае ошибки.
-     */
-    private void cleanupTempFile(Path file) {
+    private void validateDate(String date) {
         try {
-            Files.deleteIfExists(file);
-        } catch (IOException e) {
-            log.warn("Failed to delete temporary file: {}", file, e);
+            LocalDate.parse(date, DATE_FORMATTER);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid date format. Expected yyyy-MM-dd");
         }
-    }
-
-    /**
-     * Возвращает статус задачи по её идентификатору.
-     *
-     * @param taskId Идентификатор задачи
-     * @return Объект задачи
-     * @throws IllegalArgumentException если задача не найдена
-     */
-    @Transactional(readOnly = true)
-    public LogTask getTaskStatus(String taskId) {
-        return taskRepository.findById(taskId)
-                .orElseThrow(() -> {
-                    log.warn("Task not found: {}", taskId);
-                    return new IllegalArgumentException("Task not found");
-                });
-    }
-
-    /**
-     * Возвращает путь к готовому файлу логов.
-     *
-     * @param taskId Идентификатор задачи
-     * @return Путь к файлу с логами
-     * @throws IllegalStateException если файл еще не готов
-     */
-    @Transactional(readOnly = true)
-    public Path getLogFilePath(String taskId) {
-        LogTask task = selfProxy.getTaskStatus(taskId);
-        if (task.getStatus() != LogTaskStatus.COMPLETED) {
-            throw new IllegalStateException("Log file not ready yet");
-        }
-        return Paths.get(task.getFilePath());
     }
 }

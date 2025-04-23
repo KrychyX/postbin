@@ -10,10 +10,11 @@ import lombok.Setter;
 @Getter
 @Setter
 public class LogTask {
-    private final String id;
-    private final String date;
+    private String id;
+    private String date;
     private LogTaskStatus status;
     private String filePath;
+    private String errorMessage;
 
     /**
      * Создает новую задачу обработки логов со всеми параметрами.
@@ -21,9 +22,9 @@ public class LogTask {
      * @param id уникальный идентификатор задачи
      * @param date дата для фильтрации логов
      */
-    public LogTask(String id, String date) {
+    public LogTask(String id, String date, LogTaskStatus status) {
         this.id = id;
         this.date = date;
-        this.status = LogTaskStatus.PENDING;
+        this.status = status;
     }
 }

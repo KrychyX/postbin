@@ -41,10 +41,9 @@ public class LogController {
     @ApiResponse(responseCode = "202", description = "Task accepted")
     @PostMapping
     public ResponseEntity<String> createLogTask(
-            @Parameter(description = "Date in yyyy-MM-dd format")
             @RequestParam String date) {
-        LogTask task = logService.createLogTask(date).join(); // Блокируем до получения ID
-        return ResponseEntity.accepted().body(task.getId());
+        String taskId = logService.createLogTask(date);
+        return ResponseEntity.accepted().body(taskId);
     }
 
     /**
@@ -56,7 +55,6 @@ public class LogController {
     @Operation(summary = "Get task status")
     @GetMapping("/{taskId}/status")
     public ResponseEntity<LogTask> getTaskStatus(
-            @Parameter(description = "Task ID")
             @PathVariable String taskId) {
         return ResponseEntity.ok(logService.getTaskStatus(taskId));
     }
@@ -87,9 +85,9 @@ public class LogController {
                     .body(resource);
 
         } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found", e);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Не найдено", e);
         } catch (IllegalStateException e) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Log file not ready yet", e);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Не готов еще", e);
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Failed to download file", e);
