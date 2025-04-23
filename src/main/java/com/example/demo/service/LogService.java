@@ -13,10 +13,11 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,14 +34,16 @@ public class LogService {
 
     private final LogTaskRepository taskRepository;
     private final AtomicLong idCounter = new AtomicLong(1);
+    private final LogService selfProxy;
 
     /**
      * Constructs a LogService with required dependencies.
      *
      * @param taskRepository repository for log tasks
      */
-    public LogService(LogTaskRepository taskRepository) {
+    public LogService(LogTaskRepository taskRepository, @Lazy LogService selfProxy) {
         this.taskRepository = taskRepository;
+        this.selfProxy = selfProxy;
     }
 
     /**
@@ -57,7 +60,8 @@ public class LogService {
         LogTask task = new LogTask(taskId, date, LogTaskStatus.PROCESSING);
         taskRepository.save(task);
 
-        CompletableFuture.runAsync(() -> processTask(task));
+        // Call async method through proxy
+        selfProxy.processTask(task);
 
         return taskId;
     }
@@ -67,8 +71,10 @@ public class LogService {
      *
      */
     @Async("logTaskExecutor")
+    @Transactional
     public void processTask(LogTask task) {
         try {
+            // Simulate long processing
             Thread.sleep(20000);
 
             Path logFile = Paths.get(LOG_FILE_PATH);
@@ -78,16 +84,48 @@ public class LogService {
 
             Path tempFile = createTempFile(task.getDate(), filteredLines);
 
-            task.setStatus(LogTaskStatus.COMPLETED);
-            task.setFilePath(tempFile.toString());
-            taskRepository.save(task);
+            // Call transactional method through proxy
+            selfProxy.updateTaskStatus(
+                    task,
+                    LogTaskStatus.COMPLETED,
+                    tempFile.toString()
+            );
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            selfProxy.updateTaskStatus(
+                    task,
+                    LogTaskStatus.FAILED,
+                    "Processing interrupted"
+            );
+            log.warn("Task {} was interrupted", task.getId());
 
         } catch (Exception e) {
-            task.setStatus(LogTaskStatus.FAILED);
-            task.setErrorMessage(e.getMessage());
-            taskRepository.save(task);
+            selfProxy.updateTaskStatus(
+                    task,
+                    LogTaskStatus.FAILED,
+                    e.getMessage()
+            );
             log.error("Task failed: {}", task.getId(), e);
         }
+    }
+
+    /**
+     * Updates the status of a log task and optionally sets an error message.
+     */
+    @Transactional
+    public void updateTaskStatus(LogTask task, LogTaskStatus status,
+                                 String filePathOrErrorMessage) {
+        Objects.requireNonNull(task, "Task must not be null");
+        Objects.requireNonNull(status, "Status must not be null");
+
+        task.setStatus(status);
+        if (status == LogTaskStatus.COMPLETED) {
+            task.setFilePath(filePathOrErrorMessage);
+        } else {
+            task.setErrorMessage(filePathOrErrorMessage);
+        }
+        taskRepository.save(task);
     }
 
     /**
