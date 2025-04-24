@@ -46,7 +46,7 @@ public class LogController {
     public ResponseEntity<String> createLogTask(
             @RequestParam String date) {
         String taskId = logService.createLogTask(date);
-        return ResponseEntity.ok(taskId); // Мгновенный ответ с ID
+        return ResponseEntity.ok(taskId);
     }
 
     /**
