@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 import org.springframework.stereotype.Service;
 
@@ -29,8 +30,8 @@ public class CounterService {
     /**
      * Returns the request counts for all tracked endpoints.
      */
-    public ConcurrentHashMap<String, Long> getAllStats() {
-        ConcurrentHashMap<String, Long> result = new ConcurrentHashMap<>();
+    public ConcurrentMap<String, Long> getAllStats() {
+        ConcurrentMap<String, Long> result = new ConcurrentHashMap<>();
         counters.forEach((key, value) -> result.put(key, value.get()));
         return result;
     }
