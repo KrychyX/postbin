@@ -60,7 +60,6 @@ public class LogService {
         LogTask task = new LogTask(taskId, date, LogTaskStatus.PROCESSING);
         taskRepository.save(task);
 
-        // Call async method through proxy
         selfProxy.processTask(task);
 
         return taskId;
@@ -74,7 +73,6 @@ public class LogService {
     @Transactional
     public void processTask(LogTask task) {
         try {
-            // Simulate long processing
             Thread.sleep(20000);
 
             Path logFile = Paths.get(LOG_FILE_PATH);
@@ -84,7 +82,6 @@ public class LogService {
 
             Path tempFile = createTempFile(task.getDate(), filteredLines);
 
-            // Call transactional method through proxy
             selfProxy.updateTaskStatus(
                     task,
                     LogTaskStatus.COMPLETED,

@@ -1,23 +1,37 @@
 package com.example.demo.service;
 
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import org.springframework.stereotype.Service;
 
-/** Class to handle logic for visits count. */
+/**
+ * Service for counting requests to various endpoints.
+ */
 @Service
 public class CounterService {
-    private final AtomicLong counter = new AtomicLong(0);
+    private final ConcurrentHashMap<String, AtomicLong> counters = new ConcurrentHashMap<>();
 
-    /** Function to increment amount of visits. */
-    public void increment() {
-        counter.incrementAndGet();
+    /**
+     * Increments the request count for the specified endpoint.
+     */
+    public void increment(String endpoint) {
+        counters.computeIfAbsent(endpoint, k -> new AtomicLong(0))
+                .incrementAndGet();
     }
 
-    /** Function to get total amount of visits.
-     *
-     * @return total amount of visits.
+    /**
+     * Returns the current request count for the specified endpoint.
      */
-    public long getTotalVisits() {
-        return counter.get();
+    public long getCount(String endpoint) {
+        return counters.getOrDefault(endpoint, new AtomicLong(0)).get();
+    }
+
+    /**
+     * Returns the request counts for all tracked endpoints.
+     */
+    public ConcurrentHashMap<String, Long> getAllStats() {
+        ConcurrentHashMap<String, Long> result = new ConcurrentHashMap<>();
+        counters.forEach((key, value) -> result.put(key, value.get()));
+        return result;
     }
 }

@@ -3,7 +3,6 @@ package com.example.demo.controller;
 import com.example.demo.service.CounterService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.HashMap;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,34 +11,21 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** Class to control visits. */
 @RestController
-@RequestMapping("/visit")
-@Tag(name = "Visit tracking", description = "Visit counter operations")
+@RequestMapping("/stats")
+@Tag(name = "Statistics", description = "API для получения статистики")
 public class CounterController {
-
     private final CounterService counterService;
 
-    /** Constructor of the class. */
+    /**
+     * Increments the request count for the specified endpoint.
+     */
     public CounterController(CounterService counterService) {
         this.counterService = counterService;
     }
 
-    /** Function to increment counter of visits. */
-    @Operation(summary = "Register visit", description = "Increments visit counter")
-    @GetMapping
-    public void regVisit() {
-        counterService.increment();
-    }
-
-    /** Function to get amount of all visits.
-     *
-     * @return amount of total visits.
-     */
-    @Operation(summary = "Get visit count", description = "Returns visit amount")
-    @GetMapping("/count")
-    public ResponseEntity<Map<String, Object>> getStats() {
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("totalVisits", counterService.getTotalVisits());
-
-        return ResponseEntity.ok(stats);
+    @Operation(summary = "Получить всю статистику")
+    @GetMapping("/articles/visits")
+    public ResponseEntity<Map<String, Long>> getAllStats() {
+        return ResponseEntity.ok(counterService.getAllStats());
     }
 }
