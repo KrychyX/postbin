@@ -175,4 +175,39 @@ public class UserService {
         userRepository.save(subscriber);
         logger.info("Подписка от {} на {} успешно добавлена", subscriberId, channelId);
     }
+
+    /**
+     * Удаляет подписку пользователя на другого пользователя.
+     *
+     * @param subscriberId идентификатор пользователя, который подписывается
+     * @param channelId    идентификатор пользователя, на которого подписываются
+     * @throws RuntimeException если пользователь или канал не найдены
+     */
+    @Transactional
+    public void removeSubscription(Long subscriberId, Long channelId) {
+        logger.info("Удаление подписки от пользователя {} на пользователя {}",
+                subscriberId, channelId);
+
+        if (subscriberId == null || channelId == null) {
+            logger.error("ID подписчика и канала не могут быть null");
+            throw new BadRequestException("ID подписчика и канала не могут быть null");
+        }
+        if (subscriberId.equals(channelId)) {
+            logger.error("Пользователь {} пытается отписаться от самого себя", subscriberId);
+            throw new BadRequestException("Пользователь не может отписаться от самого себя");
+        }
+
+        User subscriber = getUserById(subscriberId);
+        User channel = getUserById(channelId);
+
+        if (!subscriber.getSubscriptions().contains(channel)) {
+            logger.error("Подписка от {} на {} не найдена", subscriberId, channelId);
+            throw new ResourceNotFoundException("Подписка не найдена");
+        }
+
+        subscriber.getSubscriptions().remove(channel);
+        userRepository.save(subscriber); // Сохраняем изменения
+        logger.info("Подписка от {} на {} успешно удалена", subscriberId, channelId);
+    }
 }
+

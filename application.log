@@ -1,0 +1,44 @@
+2025-04-30T19:13:36.325+03:00  INFO 5548 --- [main] com.example.demo.Application             : Starting Application using Java 17.0.14 with PID 5548 (D:\java\postbin\target\classes started by Krykk in D:\java\postbin)
+2025-04-30T19:13:36.328+03:00 DEBUG 5548 --- [main] com.example.demo.Application             : Running with Spring Boot v3.4.3, Spring v6.2.3
+2025-04-30T19:13:36.329+03:00  INFO 5548 --- [main] com.example.demo.Application             : No active profile set, falling back to 1 default profile: "default"
+2025-04-30T19:13:36.941+03:00  INFO 5548 --- [main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-04-30T19:13:36.979+03:00  INFO 5548 --- [main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 31 ms. Found 2 JPA repository interfaces.
+2025-04-30T19:13:37.526+03:00  INFO 5548 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2025-04-30T19:13:37.536+03:00  INFO 5548 --- [main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-04-30T19:13:37.536+03:00  INFO 5548 --- [main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.36]
+2025-04-30T19:13:37.578+03:00  INFO 5548 --- [main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-04-30T19:13:37.578+03:00  INFO 5548 --- [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1219 ms
+2025-04-30T19:13:37.741+03:00  INFO 5548 --- [main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-04-30T19:13:37.795+03:00  INFO 5548 --- [main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.8.Final
+2025-04-30T19:13:37.827+03:00  INFO 5548 --- [main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2025-04-30T19:13:38.055+03:00  INFO 5548 --- [main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-04-30T19:13:38.080+03:00  INFO 5548 --- [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2025-04-30T19:13:38.361+03:00  INFO 5548 --- [main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@6b7c4734
+2025-04-30T19:13:38.362+03:00  INFO 5548 --- [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2025-04-30T19:13:38.438+03:00  INFO 5548 --- [main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 17.4
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2025-04-30T19:13:39.126+03:00  INFO 5548 --- [main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-04-30T19:13:39.328+03:00  INFO 5548 --- [main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-04-30T19:13:39.611+03:00  INFO 5548 --- [main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2025-04-30T19:13:39.834+03:00  WARN 5548 --- [main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-04-30T19:13:40.323+03:00  INFO 5548 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
+2025-04-30T19:13:40.330+03:00  INFO 5548 --- [main] com.example.demo.Application             : Started Application in 4.336 seconds (process running for 4.881)
+2025-04-30T19:14:58.787+03:00  INFO 5548 --- [http-nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-04-30T19:14:58.788+03:00  INFO 5548 --- [http-nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2025-04-30T19:14:58.789+03:00  INFO 5548 --- [http-nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2025-04-30T19:14:58.830+03:00  INFO 5548 --- [http-nio-8080-exec-1] com.example.demo.utils.LoggingAspect     : Method called: UserController.unsubscribe(..)
+2025-04-30T19:14:58.835+03:00  INFO 5548 --- [http-nio-8080-exec-1] com.example.demo.service.UserService     : Удаление подписки от пользователя 1 на пользователя 3
+2025-04-30T19:14:58.836+03:00  INFO 5548 --- [http-nio-8080-exec-1] com.example.demo.service.UserService     : Получение пользователя по ID: 1
+2025-04-30T19:14:58.891+03:00  INFO 5548 --- [http-nio-8080-exec-1] com.example.demo.service.UserService     : Получение пользователя по ID: 3
+2025-04-30T19:14:58.910+03:00  INFO 5548 --- [http-nio-8080-exec-1] com.example.demo.service.UserService     : Подписка от 1 на 3 успешно удалена
+2025-04-30T19:15:10.626+03:00  INFO 5548 --- [SpringApplicationShutdownHook] o.s.b.w.e.tomcat.GracefulShutdown        : Commencing graceful shutdown. Waiting for active requests to complete
+2025-04-30T19:15:10.665+03:00  INFO 5548 --- [tomcat-shutdown] o.s.b.w.e.tomcat.GracefulShutdown        : Graceful shutdown complete
+2025-04-30T19:15:10.669+03:00  INFO 5548 --- [SpringApplicationShutdownHook] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2025-04-30T19:15:10.671+03:00  INFO 5548 --- [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2025-04-30T19:15:10.674+03:00  INFO 5548 --- [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.

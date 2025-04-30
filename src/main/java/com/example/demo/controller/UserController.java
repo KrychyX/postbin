@@ -202,4 +202,23 @@ public class UserController {
                 .map(UserMapper::toDTO)
                 .toList();
     }
+
+    /**
+     * Удаляет подписку.
+     */
+    @Operation(summary = "Отменить подписку",
+            description = "Удаляет подписку пользователя на другого пользователя")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Подписка успешно отменена"),
+        @ApiResponse(responseCode = "404", description = "Пользователь или подписка не найдена"),
+        @ApiResponse(responseCode = "400",
+                description = "Невозможно отменить несуществующую подписку")
+    })
+    @DeleteMapping("/{subscriberId}/unsubscribe/{channelId}")
+    public void unsubscribe(
+            @Parameter(description = "ID подписчика") @PathVariable Long subscriberId,
+            @Parameter(description = "ID канала") @PathVariable Long channelId
+    ) {
+        userService.removeSubscription(subscriberId, channelId);
+    }
 }
